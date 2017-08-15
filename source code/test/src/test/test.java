@@ -1,0 +1,149 @@
+package test;
+
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Iterator;
+import java.util.Scanner;
+
+import org.dcm4che2.data.DicomElement;
+import org.dcm4che2.data.DicomObject;
+import org.dcm4che2.io.DicomInputStream;
+import org.dcm4che2.util.TagUtils;
+
+/***
+ * 
+ * @author mazen
+ * 
+ */
+public class test {
+
+	static PrintWriter writer;
+	static File current;
+
+	/***
+	 * 
+	 * @param args
+	 * @throws IOException
+	 */
+	public static void main(String[] args) throws IOException {
+//		Scanner in = new Scanner(System.in);
+//		System.out.println("Folder containing images:");
+//		String input = in.nextLine();
+//		File file = new File(input);
+//
+		writer = new PrintWriter("BATCH6_B.txt", "UTF-8");
+//		System.out.println("TOSTRING: "+file.toString());
+//		System.out.println("PATH: "+file.getAbsolutePath());
+		String qwe = "/Volumes/DUNDEE_STUDY/IMAGES/DBT Multi-Reader Study/DBT/BATCH 6_B/Cached/BATCH6_B BTO";
+		
+//		listFilesAndFilesSubDirectories(file.toString());
+		listFilesAndFilesSubDirectories(qwe);
+		writer.close();
+		
+		
+		
+		
+	}
+
+	/***
+	 * 
+	 * @param directoryName
+	 * @throws IOException 
+	 */
+	public static void listFilesAndFilesSubDirectories(String directoryName)
+			throws IOException {
+		File directory = new File(directoryName);
+		File[] fList = directory.listFiles();
+		for (File file : fList) {
+			if (file.isFile()) {
+				String extension = "";
+				boolean isDicom = com.pixelmed.dicom.DicomFileUtilities.isDicomOrAcrNemaFile(file.getAbsolutePath());
+				if(isDicom!=false){
+				printSetup(file.getAbsolutePath());
+				}
+				
+				
+			} else if (file.isDirectory()) {
+				listFilesAndFilesSubDirectories(file.getAbsolutePath());
+				System.out.println("FOLDER: " + file.getAbsolutePath());
+			}
+		}
+	}
+
+	public static void printSetup(String x) throws IOException {
+		DicomObject object = null;
+		System.out.println(x);
+		try {
+			DicomInputStream dis = new DicomInputStream(new File(x));
+			object = dis.readDicomObject();
+			dis.close();
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			System.exit(0);
+		}
+		test list = new test();
+		list.listHeader(object);
+	}
+
+
+	/**
+	 * 
+	 * @param object
+	 * @throws IOException 
+	 */
+	public void listHeader(DicomObject object) throws IOException {
+		Iterator<DicomElement> iter = object.datasetIterator();
+		while (iter.hasNext()) {
+			DicomElement element = iter.next();
+			int tag = element.tag();
+			try {
+				
+				String tagName = object.nameOf(tag);
+				Iterator<DicomElement> xx = object.fileMetaInfoIterator();
+				String meta = object.fileMetaInfo().toString();
+				String tagAddr = TagUtils.toString(tag);
+				String tagVR = object.vrOf(tag).toString();
+				if (tagVR.equals("SQ")) {
+					if (element.hasItems()) {
+//						System.out.println(tagAddr + " [" + tagVR + "] "+ tagName);
+						listHeader(element.getDicomObject());
+						continue;
+					}
+				}
+
+				String tagValue = object.getString(tag);
+//				System.out.println(tagAddr + " [" + tagVR + "] " + tagName + " [" + tagValue + "]");
+				if (tagName.matches("Frame Laterality") && tagName != null) {
+					writer.print(tagValue + " < ");
+				} else if (tagName.matches("SOP Instance UID")
+						&& tagName != null) {
+					writer.print(" < "+tagValue + " < ");
+				} else if (tagAddr.contains("0055,1001") && tagAddr != null) {
+					writer.print(" < "+tagValue + " < ");
+				} else if (tagAddr.contains("0018,5101") && tagAddr != null) {
+					writer.print(" < "+tagValue + " < ");
+				} else if (tagAddr.contains("0020,0062") && tagAddr != null) {
+					writer.print(" < "+tagValue + " < ");
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+ 
+		}
+		
+		 DicomInputStream dis = new DicomInputStream(current);
+	       DicomObject metaInfo = dis.readFileMetaInformation();
+//	       System.out.println(metaInfo);
+	       String text = metaInfo.toString();
+	       
+	       String textStr[] = text.split("\\r\\n|\\n|\\r");
+			   writer.print(" < " + textStr[2].toString()+" < ");
+			   System.out.println(textStr[2]);	  
+	}
+
+}
